@@ -1,4 +1,4 @@
-Tool for AQW Wiki
+Tool for AQW Wiki.
 Use the Tampermonkey extension and upload the script linked to “aqwwiki_items_github.json.”
 Goal: avoid opening too many tabs.
 (DeepL Translation)
