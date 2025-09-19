@@ -1,0 +1,100 @@
+// ==UserScript==
+// @name         AQW-Wiki-Tool
+// @namespace    http://tampermonkey.net
+// @version      1.0
+// @description  Tool for AQW Wiki
+// @match        http://aqwwiki.wikidot.com/*
+// @match        https://aqwwiki.wikidot.com/*
+// @grant        GM_xmlhttpRequest
+// @connect      raw.githubusercontent.com
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const JSON_URL = "https://raw.githubusercontent.com/Frei-S/aqw-items-db/refs/heads/main/aqw_items_github.json";
+    let itemsMap = {};
+    const tooltip = document.createElement('div');
+
+    tooltip.style.position = 'absolute';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.border = '2px solid #333';
+    tooltip.style.background = '#fff';
+    tooltip.style.padding = '5px';
+    tooltip.style.borderRadius = '5px';
+    tooltip.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+    tooltip.style.zIndex = '9999';
+    tooltip.style.display = 'none';
+    tooltip.style.maxWidth = '90vw';
+    tooltip.style.maxHeight = '90vh';
+    tooltip.style.overflow = 'auto';
+    document.body.appendChild(tooltip);
+
+    function normalizeUrl(url) {
+        return url.replace(/^https?:\/\//,'').toLowerCase();
+    }
+
+    GM_xmlhttpRequest({
+        method: "GET",
+        url: JSON_URL,
+        onload: function(res) {
+            try {
+                const data = JSON.parse(res.responseText);
+                for (const category in data) {
+                    data[category].forEach(item => {
+                        if(item.url) {
+                            itemsMap[normalizeUrl(item.url)] = item;
+                        }
+                    });
+                }
+                enablePreview();
+            } catch(e) {
+                console.error("Error parseando JSON:", e);
+            }
+        }
+    });
+
+    function enablePreview() {
+        const links = document.querySelectorAll('a[href]');
+        links.forEach(link => {
+            const href = normalizeUrl(link.href);
+            if (!itemsMap[href]) return;
+
+            link.addEventListener('mouseenter', e => {
+                const images = itemsMap[href].images || [];
+                tooltip.innerHTML = images.map(img => `<img src="${img}" style="max-width:400px; max-height:400px; margin:2px;">`).join('');
+                tooltip.style.display = 'block';
+                positionTooltip(e);
+            });
+
+            link.addEventListener('mousemove', e => {
+                positionTooltip(e);
+            });
+
+            link.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+            });
+        });
+    }
+
+    function positionTooltip(e) {
+        const padding = 15;
+        let x = e.pageX + padding;
+        let y = e.pageY + padding;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+
+        if (x - window.scrollX + tooltipRect.width > winWidth) {
+            x = window.scrollX + winWidth - tooltipRect.width - padding;
+        }
+
+        if (y - window.scrollY + tooltipRect.height > winHeight) {
+            y = window.scrollY + winHeight - tooltipRect.height - padding;
+        }
+
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+    }
+
+})();
